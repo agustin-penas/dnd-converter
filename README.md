@@ -138,6 +138,39 @@ Open it in **VS Code** (`Ctrl+Shift+V` / `Cmd+Shift+V`) to preview the formatted
 
 ---
 
+---
+
+## Using with Gemini CLI (natural language)
+
+Instead of remembering the command arguments, you can use the **[Gemini CLI](https://github.com/google-gemini/gemini-cli)** to run conversions with plain English.
+
+### 1. Install Gemini CLI
+
+```bash
+npm install -g @google/gemini-cli
+```
+
+### 2. Start the agent from the project folder
+
+```bash
+cd dnd-converter
+gemini
+```
+
+The CLI will automatically read `GEMINI.md`, which gives it full context about the tool and how to use it.
+
+### 3. Just describe what you want
+
+> *"Convert the adventure encounters for lost_mine.pdf into D&D 5e 2024 using mm_2024.pdf, for a party of 3 level 4 characters"*
+
+Gemini will build and run the correct command for you:
+
+```bash
+python converter.py lost_mine.pdf --monsters mm_2024.pdf --level 4 --players 3
+```
+
+> Free tier: 1,000 requests/day with a personal Google account.
+
 ## Getting D&D 5e Reference PDFs
 
 > ⚠️ You must legally own any PDFs you use with this tool.
