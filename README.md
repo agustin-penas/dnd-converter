@@ -74,13 +74,21 @@ pip install -r requirements.txt
 3. Click **"Get API Key"** → **"Create API key"**
 4. Copy the key
 
-### 5. Add your API key to the script
+### 5. Configure your API key
 
-Open `converter.py` and replace the placeholder on line 8:
+Copy the example file and add your key:
 
-```python
-API_KEY = "paste-your-api-key-here"
+```bash
+cp .env.example .env
 ```
+
+Open `.env` and replace the placeholder:
+
+```
+GEMINI_API_KEY=paste-your-api-key-here
+```
+
+> 🔒 `.env` is listed in `.gitignore` — your key will never be committed.
 
 ---
 
@@ -112,7 +120,7 @@ python converter.py my_adventure.pdf \
 
 | Argument | Description | Default |
 |---|---|---|
-| `aventura` | Path to the adventure PDF to convert *(required)* | — |
+| `adventure` | Path to the adventure PDF to convert *(required)* | — |
 | `--rules` | Path to the DMG / SRD PDF for combat rules context | None |
 | `--monsters` | Path to the Monster Manual PDF for stat block reference | None |
 | `--level` | Average party level | `5` |
