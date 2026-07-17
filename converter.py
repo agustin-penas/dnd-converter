@@ -7,19 +7,26 @@ cached as Markdown on first use so they don't need to be reprocessed.
 
 Usage:
     python converter.py adventure.pdf
-    python converter.py adventure.pdf --reglas dmg_2024.pdf --monstruos mm_2024.pdf
-    python converter.py adventure.pdf --nivel 8 --jugadores 5
+    python converter.py adventure.pdf --rules dmg_2024.pdf --monsters mm_2024.pdf
+    python converter.py adventure.pdf --level 8 --players 5
 """
 
 import argparse
+import os
 import sys
 import google.generativeai as genai
 from docling.document_converter import DocumentConverter
+from dotenv import load_dotenv
 from pathlib import Path
 
+load_dotenv()
+
 # ── Configuration ──────────────────────────────────────────────────────────────
-# Get a free API key at https://aistudio.google.com
-API_KEY = "paste-your-api-key-here"
+# Set GEMINI_API_KEY in a .env file (copy .env.example to .env to get started)
+API_KEY = os.getenv("GEMINI_API_KEY")
+if not API_KEY:
+    print("❌ GEMINI_API_KEY not set. Copy .env.example to .env and add your key.")
+    sys.exit(1)
 
 # Safe character limit for the full prompt (Gemini Flash supports ~1M tokens).
 # The adventure text is always kept intact; reference context is trimmed if needed.
