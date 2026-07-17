@@ -26,6 +26,7 @@ env/
 
 # Keep project documentation
 !README.md
+!GEMINI.md
 !examples/*.md
 
 # macOS
