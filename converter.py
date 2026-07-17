@@ -35,14 +35,15 @@ def pdf_to_markdown(pdf_path: str) -> str:
     md_path = Path(pdf_path).with_suffix(".md")
 
     if md_path.exists():
-        print(f"  ✅ Using cached: {md_path.name}")
-        return md_path.read_text(encoding="utf-8")
+        markdown = md_path.read_text(encoding="utf-8")
+        print(f"  ✅ Using cached: {md_path.name} ({len(markdown):,} characters)")
+        return markdown
 
     print(f"  🤖 Processing with Docling: {Path(pdf_path).name}  (first time — may take a few minutes)")
     converter = DocumentConverter()
     markdown = converter.convert(pdf_path).document.export_to_markdown()
     md_path.write_text(markdown, encoding="utf-8")
-    print(f"  💾 Cached at: {md_path.name}")
+    print(f"  💾 Cached at: {md_path.name} ({len(markdown):,} characters)")
     return markdown
 
 
