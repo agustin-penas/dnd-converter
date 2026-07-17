@@ -113,12 +113,12 @@ if __name__ == "__main__":
         description="Convert any RPG adventure PDF into D&D 5e 2024 encounters.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("aventura",      help="Path to the adventure PDF")
-    parser.add_argument("--reglas",      default=None, metavar="PDF", help="Path to DMG / SRD PDF (combat rules context)")
-    parser.add_argument("--monstruos",   default=None, metavar="PDF", help="Path to Monster Manual PDF")
-    parser.add_argument("--nivel",       type=int, default=5,  metavar="N", help="Average party level")
-    parser.add_argument("--jugadores",   type=int, default=4,  metavar="N", help="Number of players in the party")
+    parser.add_argument("adventure",      help="Path to the adventure PDF")
+    parser.add_argument("--rules",      default=None, metavar="PDF", help="Path to DMG / SRD PDF (combat rules context)")
+    parser.add_argument("--monsters",   default=None, metavar="PDF", help="Path to Monster Manual PDF")
+    parser.add_argument("--level",       type=int, default=5,  metavar="N", help="Average party level")
+    parser.add_argument("--players",   type=int, default=4,  metavar="N", help="Number of players in the party")
     args = parser.parse_args()
 
-    convert_adventure(args.aventura, args.reglas, args.monstruos, args.nivel, args.jugadores)
+    convert_adventure(args.adventure, args.rules, args.monsters, args.level, args.players)
 

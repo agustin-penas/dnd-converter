@@ -96,27 +96,27 @@ python converter.py my_adventure.pdf
 
 ```bash
 python converter.py my_adventure.pdf \
-  --reglas dmg_2024.pdf \
-  --monstruos mm_2024.pdf
+  --rules dmg_2024.pdf \
+  --monsters mm_2024.pdf
 ```
 
 ### Full options
 
 ```bash
 python converter.py my_adventure.pdf \
-  --reglas dmg_2024.pdf \
-  --monstruos mm_2024.pdf \
-  --nivel 8 \
-  --jugadores 5
+  --rules dmg_2024.pdf \
+  --monsters mm_2024.pdf \
+  --level 8 \
+  --players 5
 ```
 
 | Argument | Description | Default |
 |---|---|---|
 | `aventura` | Path to the adventure PDF to convert *(required)* | — |
-| `--reglas` | Path to the DMG / SRD PDF for combat rules context | None |
-| `--monstruos` | Path to the Monster Manual PDF for stat block reference | None |
-| `--nivel` | Average party level | `5` |
-| `--jugadores` | Number of players in the party | `4` |
+| `--rules` | Path to the DMG / SRD PDF for combat rules context | None |
+| `--monsters` | Path to the Monster Manual PDF for stat block reference | None |
+| `--level` | Average party level | `5` |
+| `--players` | Number of players in the party | `4` |
 
 ### Output
 
