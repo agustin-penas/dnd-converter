@@ -79,14 +79,11 @@ def convert_adventure(
     reference_context = ""
 
     if pdf_rules:
-        print("\n📚 Combat rules:")
         reference_context += f"\n\n# D&D 5e 2024 COMBAT RULES\n{pdf_to_markdown(pdf_rules)}"
 
     if pdf_monsters:
-        print("\n👹 Monster Manual:")
         reference_context += f"\n\n# MONSTER MANUAL\n{pdf_to_markdown(pdf_monsters)}"
 
-    print("\n📖 Adventure:")
     adventure_text = pdf_to_markdown(pdf_adventure)
 
     # Trim reference context if total prompt exceeds the safe limit.
