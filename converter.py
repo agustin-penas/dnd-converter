@@ -50,24 +50,32 @@ def save_cache(cache: dict) -> None:
 def upload_pdf(pdf_path: str) -> genai.protos.File:
     """
     Upload a PDF to the Gemini File API.
-    Caches the file reference locally — files stay active on Gemini for 48 hours,
-    so reference PDFs (MM, DMG) only need to be re-uploaded every 2 days.
+    Caches the file name and upload timestamp locally.
+    Files expire on Gemini after 48h — re-upload happens automatically.
     """
     cache = load_cache()
     abs_path = str(Path(pdf_path).resolve())
+    name = Path(pdf_path).name
 
-    # Check if we have a cached upload that's still active
     if abs_path in cache:
-        try:
-            file = genai.get_file(cache[abs_path]["name"])
-            if file.state.name == "ACTIVE":
-                print(f"  ✅ Using cached upload: {Path(pdf_path).name} (valid for ~48h)")
-                return file
-        except Exception:
-            pass  # Cache entry invalid, re-upload
+        cached = cache[abs_path]
+        age_hours = (time.time() - cached.get("uploaded_at", 0)) / 3600
+        remaining = 48 - age_hours
+
+        if remaining > 0:
+            # File should still be alive — verify with a quick API check
+            try:
+                file = genai.get_file(cached["name"])
+                if file.state.name == "ACTIVE":
+                    print(f"  ✅ Using cached upload: {name} ({remaining:.0f}h remaining)")
+                    return file
+            except Exception:
+                pass  # File gone on Gemini's side, re-upload
+        else:
+            print(f"  🔄 Cache expired for {name}, re-uploading...")
 
     # Upload the file
-    print(f"  📤 Uploading {Path(pdf_path).name} to Gemini... ", end="", flush=True)
+    print(f"  📤 Uploading {name} to Gemini... ", end="", flush=True)
     file = genai.upload_file(pdf_path, mime_type="application/pdf")
 
     # Wait for Gemini to finish processing
@@ -76,14 +84,14 @@ def upload_pdf(pdf_path: str) -> genai.protos.File:
         time.sleep(2)
         file = genai.get_file(file.name)
 
-    print(f" done!")
+    print(" done!")
 
     if file.state.name != "ACTIVE":
         print(f"❌ Upload failed. File state: {file.state.name}")
         sys.exit(1)
 
-    # Save to cache
-    cache[abs_path] = {"name": file.name, "uri": file.uri}
+    # Save to cache with upload timestamp
+    cache[abs_path] = {"name": file.name, "uri": file.uri, "uploaded_at": time.time()}
     save_cache(cache)
     return file
 
