@@ -43,3 +43,4 @@ env/
 
 # Test output files
 *.txt
+\n# Gemini File API upload cache\n.upload_cache.json

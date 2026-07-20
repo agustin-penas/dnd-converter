@@ -1,85 +1,109 @@
 """
 dnd-converter: Convert any RPG adventure PDF into D&D 5e 2024 encounters.
 
-Uses Docling for high-quality PDF-to-Markdown extraction and Gemini Flash
-for the system conversion. Reference PDFs (rulebooks, monster manuals) are
-cached as Markdown on first use so they don't need to be reprocessed.
+Uploads PDFs directly to the Gemini File API — no local text extraction needed.
+Reference files (Monster Manual, DMG) are cached for 48 hours so they only
+need to be uploaded once.
 
 Usage:
     python converter.py adventure.pdf
     python converter.py adventure.pdf --rules dmg_2024.pdf --monsters mm_2024.pdf
-    python converter.py adventure.pdf --level 8 --players 5
+    python converter.py adventure.pdf --monsters mm_2024.pdf --level 8 --players 5
 """
 
 import argparse
+import json
 import os
 import sys
-import google.generativeai as genai
-from docling.document_converter import DocumentConverter
-from docling.datamodel.base_models import InputFormat
-from docling.datamodel.pipeline_options import PdfPipelineOptions
-from docling.document_converter import PdfFormatOption
-from dotenv import load_dotenv
+import time
 from pathlib import Path
+
+import google.generativeai as genai
+from dotenv import load_dotenv
 
 load_dotenv()
 
 # ── Configuration ──────────────────────────────────────────────────────────────
-# Set GEMINI_API_KEY and optionally GEMINI_MODEL in a .env file
 API_KEY = os.getenv("GEMINI_API_KEY")
 if not API_KEY:
     print("❌ GEMINI_API_KEY not set. Copy .env.example to .env and add your key.")
     sys.exit(1)
 
 MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
-
-# Safe character limit for the full prompt (Gemini Flash supports ~1M tokens).
-# The adventure text is always kept intact; reference context is trimmed if needed.
-MAX_CHARS = 700_000
+UPLOAD_CACHE_FILE = Path(".upload_cache.json")
 # ───────────────────────────────────────────────────────────────────────────────
 
 genai.configure(api_key=API_KEY)
 model = genai.GenerativeModel(MODEL)
 
 
-def pdf_to_markdown(pdf_path: str) -> str:
-    """Convert a PDF to Markdown using Docling, caching the result alongside the source file."""
-    md_path = Path(pdf_path).with_suffix(".md")
-
-    if md_path.exists():
-        markdown = md_path.read_text(encoding="utf-8")
-        print(f"  ✅ Using cached: {md_path.name} ({len(markdown):,} characters)")
-        return markdown
-
-    print(f"  🤖 Processing with Docling: {Path(pdf_path).name}  (first time — may take a few minutes)")
-    pipeline_options = PdfPipelineOptions()
-    pipeline_options.do_ocr = False  # PDFs are text-based, no OCR needed
-    converter = DocumentConverter(
-        format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)}
-    )
-    markdown = converter.convert(pdf_path).document.export_to_markdown()
-    md_path.write_text(markdown, encoding="utf-8")
-    print(f"  💾 Cached at: {md_path.name} ({len(markdown):,} characters)")
-    return markdown
+def load_cache() -> dict:
+    if UPLOAD_CACHE_FILE.exists():
+        return json.loads(UPLOAD_CACHE_FILE.read_text(encoding="utf-8"))
+    return {}
 
 
-def build_prompt(adventure_text: str, reference_context: str, level: int, players: int) -> str:
-    return f"""You are an expert Dungeon Master. Use the reference documents provided to convert
-this adventure into D&D 5e 2024 format.
+def save_cache(cache: dict) -> None:
+    UPLOAD_CACHE_FILE.write_text(json.dumps(cache, indent=2), encoding="utf-8")
+
+
+def upload_pdf(pdf_path: str) -> genai.protos.File:
+    """
+    Upload a PDF to the Gemini File API.
+    Caches the file reference locally — files stay active on Gemini for 48 hours,
+    so reference PDFs (MM, DMG) only need to be re-uploaded every 2 days.
+    """
+    cache = load_cache()
+    abs_path = str(Path(pdf_path).resolve())
+
+    # Check if we have a cached upload that's still active
+    if abs_path in cache:
+        try:
+            file = genai.get_file(cache[abs_path]["name"])
+            if file.state.name == "ACTIVE":
+                print(f"  ✅ Using cached upload: {Path(pdf_path).name} (valid for ~48h)")
+                return file
+        except Exception:
+            pass  # Cache entry invalid, re-upload
+
+    # Upload the file
+    print(f"  📤 Uploading {Path(pdf_path).name} to Gemini... ", end="", flush=True)
+    file = genai.upload_file(pdf_path, mime_type="application/pdf")
+
+    # Wait for Gemini to finish processing
+    while file.state.name == "PROCESSING":
+        print(".", end="", flush=True)
+        time.sleep(2)
+        file = genai.get_file(file.name)
+
+    print(f" done!")
+
+    if file.state.name != "ACTIVE":
+        print(f"❌ Upload failed. File state: {file.state.name}")
+        sys.exit(1)
+
+    # Save to cache
+    cache[abs_path] = {"name": file.name, "uri": file.uri}
+    save_cache(cache)
+    return file
+
+
+def build_prompt(level: int, players: int) -> str:
+    return f"""You are an expert Dungeon Master. The attached PDFs contain:
+1. (If provided) D&D 5e 2024 reference material: Monster Manual and/or DMG
+2. A tabletop RPG adventure to convert
+
+Using the reference material for accurate stat blocks, convert every combat encounter
+in the adventure to D&D 5e 2024 format.
 
 The party consists of {players} characters at level {level}.
 
-For every combat encounter found in the adventure, generate:
-1. Encounter name and a 2–3 line tactical description of the scene
+For each combat encounter produce:
+1. Encounter name and a 2-3 line tactical description of the scene
 2. Full stat block for each creature (Markdown tables, D&D 5e 2024 format)
 3. Individual CR and total XP for the encounter
-4. Difficulty rating for the party ({players} players, level {level})
+4. Difficulty rating for {players} players at level {level}
 5. Suggested tactics for the monsters
-
-{reference_context}
-
-# ADVENTURE TO CONVERT
-{adventure_text}
 """
 
 
@@ -91,34 +115,28 @@ def convert_adventure(
     players: int,
 ) -> None:
     print(f"\n🎲 dnd-converter — Level {level}, {players} players | model: {MODEL}")
-    print("=" * 50)
+    print("=" * 55)
 
-    reference_context = ""
+    content_parts = []
+
+    # Upload reference files (cached 48h — only re-uploaded when expired)
+    if pdf_monsters:
+        print("\n👹 Monster Manual:")
+        content_parts.append(upload_pdf(pdf_monsters))
 
     if pdf_rules:
-        reference_context += f"\n\n# D&D 5e 2024 COMBAT RULES\n{pdf_to_markdown(pdf_rules)}"
+        print("\n📚 Rules reference:")
+        content_parts.append(upload_pdf(pdf_rules))
 
-    if pdf_monsters:
-        reference_context += f"\n\n# MONSTER MANUAL\n{pdf_to_markdown(pdf_monsters)}"
+    # Upload adventure (fresh each time)
+    print("\n📖 Adventure:")
+    content_parts.append(upload_pdf(pdf_adventure))
 
-    adventure_text = pdf_to_markdown(pdf_adventure)
+    # Add the conversion prompt
+    content_parts.append(build_prompt(level, players))
 
-    # Trim reference context if total prompt exceeds the safe limit.
-    # The adventure text is never trimmed.
-    total_chars = len(reference_context) + len(adventure_text)
-    print(f"\n📊 Total context: {total_chars:,} characters")
-
-    if total_chars > MAX_CHARS:
-        print("⚠️  Context exceeds safe limit — trimming reference material...")
-        available = MAX_CHARS - len(adventure_text)
-        if available < 0:
-            print("❌ The adventure alone exceeds the limit. Split the PDF into smaller parts.")
-            sys.exit(1)
-        reference_context = reference_context[:available]
-
-    print("\n🤖 Converting with Gemini Flash...")
-    prompt = build_prompt(adventure_text, reference_context, level, players)
-    response = model.generate_content(prompt)
+    print(f"\n🤖 Converting with {MODEL}...")
+    response = model.generate_content(content_parts)
 
     output_path = Path(pdf_adventure).with_name(Path(pdf_adventure).stem + "_dnd5e_2024.md")
     output_path.write_text("# D&D 5e 2024 Encounters\n\n" + response.text, encoding="utf-8")
@@ -130,12 +148,11 @@ if __name__ == "__main__":
         description="Convert any RPG adventure PDF into D&D 5e 2024 encounters.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("adventure",      help="Path to the adventure PDF")
-    parser.add_argument("--rules",      default=None, metavar="PDF", help="Path to DMG / SRD PDF (combat rules context)")
+    parser.add_argument("adventure",    help="Path to the adventure PDF")
+    parser.add_argument("--rules",      default=None, metavar="PDF", help="Path to DMG / SRD PDF")
     parser.add_argument("--monsters",   default=None, metavar="PDF", help="Path to Monster Manual PDF")
-    parser.add_argument("--level",       type=int, default=5,  metavar="N", help="Average party level")
-    parser.add_argument("--players",   type=int, default=4,  metavar="N", help="Number of players in the party")
+    parser.add_argument("--level",      type=int, default=5,  metavar="N", help="Average party level")
+    parser.add_argument("--players",    type=int, default=4,  metavar="N", help="Number of players")
     args = parser.parse_args()
 
     convert_adventure(args.adventure, args.rules, args.monsters, args.level, args.players)
-

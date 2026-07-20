@@ -65,7 +65,7 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-> ⚠️ Docling downloads AI models (~1–2 GB) on first use. This only happens once.
+> ℹ️ No AI models are downloaded locally — PDFs are uploaded directly to Gemini.
 
 ### 4. Get a Gemini API key (free)
 
@@ -144,31 +144,22 @@ Open it in **VS Code** (`Ctrl+Shift+V` / `Cmd+Shift+V`) to preview the formatted
 
 ## Handling large Monster Manual PDFs
 
-The Monster Manual is a large file. Instead of sending it whole to the model on every run, the recommended workflow is:
+PDFs are uploaded directly to the **Gemini File API** — no local text extraction needed.
+Gemini reads the PDF natively (including multi-column layouts and stylized fonts),
+so even a 330MB Monster Manual works without any parsing.
 
-### 1. Parse the Monster Manual once
+Reference files are **cached for 48 hours** on Gemini's servers. On the first run they
+are uploaded once; subsequent runs within 48 hours reuse the cached upload instantly.
 
-```bash
-python parse_mm.py mm_2024.pdf
+```
+First run:
+  📤 Uploading mm_2024.pdf to Gemini... done!   ← one-time upload (~1-2 min)
+
+Next runs (within 48h):
+  ✅ Using cached upload: mm_2024.pdf            ← instant
 ```
 
-This creates a `monsters/` folder with one `.md` file per monster entry. It takes ~30 minutes on first run but only needs to be done once — Docling caches the result.
-
-### 2. Filter to only the monsters your adventure needs
-
-```bash
-python filter_monsters.py my_adventure.pdf
-```
-
-This reads your adventure, asks Gemini which monsters appear in it, and produces a small `my_adventure_monsters.md` with only those stat blocks.
-
-### 3. Use the filtered file in the converter
-
-```bash
-python converter.py my_adventure.pdf --monsters my_adventure_monsters.md --level 5 --players 4
-```
-
-This keeps the prompt lean and fast regardless of how large the full Monster Manual is.
+After 48 hours the cache expires and the file is re-uploaded automatically.
 
 ## Using with Gemini CLI (natural language)
 
