@@ -58,20 +58,36 @@ def pdf_to_markdown(pdf_path: str) -> str:
 
 
 def list_available_monsters(monsters_dir: str) -> dict[str, Path]:
-    """Return a dict of {display_name: file_path} for all .md files in the monsters folder."""
+    """
+    Return a dict of {display_name: file_path} for all .md files in the monsters folder.
+    Uses index.json (produced by parse_mm.py) for clean name mapping.
+    Falls back to filename-based names if index not found.
+    """
     dir_path = Path(monsters_dir)
     if not dir_path.exists():
         print(f"❌ Monsters folder '{monsters_dir}' not found.")
         print("   Run parse_mm.py first: python parse_mm.py mm_2024.pdf")
         sys.exit(1)
 
+    index_path = dir_path / "index.json"
+    if index_path.exists():
+        index = json.load(index_path.open(encoding="utf-8"))
+        # index maps clean_name_lower → filename; invert to {clean_name: Path}
+        seen: set[str] = set()
+        result: dict[str, Path] = {}
+        for name, filename in index.items():
+            filepath = dir_path / filename
+            if filepath.exists() and filename not in seen:
+                result[name] = filepath
+                seen.add(filename)
+        return result
+
+    # Fallback: derive names from filenames
     files = list(dir_path.glob("*.md"))
     if not files:
         print(f"❌ No .md files found in '{monsters_dir}'.")
         print("   Run parse_mm.py first: python parse_mm.py mm_2024.pdf")
         sys.exit(1)
-
-    # Convert filenames back to display names (orc_war_chief.md → "orc war chief")
     return {f.stem.replace("_", " "): f for f in sorted(files)}
 
 
