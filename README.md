@@ -14,7 +14,7 @@ Given a PDF from any RPG system (Pathfinder, Call of Cthulhu, WFRP, OSR, etc.), 
 Your adventure PDF
        │
        ▼
-  Docling (IBM)          ← Converts PDF to clean, structured Markdown
+  Gemini File API        ← PDFs uploaded directly; Gemini reads them natively
        │
        ▼
   Gemini Flash           ← Reads the adventure + optional rules/monster context
@@ -23,9 +23,9 @@ Your adventure PDF
   Markdown output        ← Stat blocks, CR, XP, difficulty, tactics
 ```
 
-- **[Docling](https://github.com/DS4SD/docling)** (IBM open-source) is used instead of basic PDF readers because it preserves tables, headings, and lists — critical for accurate stat block extraction and for the model to understand the source material.
-- PDFs of rulebooks (DMG, Monster Manual) are processed **once** and cached locally as Markdown, so you don't wait on every run.
-- The adventure PDF is always sent **in full** to the model — no arbitrary character truncation.
+- PDFs are uploaded **directly** to the Gemini File API — no local parsing required. Gemini reads the raw PDF natively, handling multi-column layouts and complex formatting.
+- Reference PDFs (Monster Manual, DMG) are **cached for 48 hours** on Gemini's servers and reused automatically on subsequent runs.
+- The adventure PDF is always sent **in full** — no arbitrary truncation.
 
 ---
 
@@ -140,26 +140,22 @@ Open it in **VS Code** (`Ctrl+Shift+V` / `Cmd+Shift+V`) to preview the formatted
 
 ---
 
----
+## PDF Caching
 
-## Handling large Monster Manual PDFs
-
-PDFs are uploaded directly to the **Gemini File API** — no local text extraction needed.
-Gemini reads the PDF natively (including multi-column layouts and stylized fonts),
-so even a 330MB Monster Manual works without any parsing.
-
-Reference files are **cached for 48 hours** on Gemini's servers. On the first run they
-are uploaded once; subsequent runs within 48 hours reuse the cached upload instantly.
+Reference PDFs (Monster Manual, DMG) are uploaded once and cached for **48 hours** in `.upload_cache.json`. On the first run they are uploaded once; subsequent runs reuse the cached upload instantly.
 
 ```
 First run:
-  📤 Uploading mm_2024.pdf to Gemini... done!   ← one-time upload (~1-2 min)
+  📤 Uploading mm_2024.pdf to Gemini... done!        ← one-time upload (~1-2 min)
 
 Next runs (within 48h):
-  ✅ Using cached upload: mm_2024.pdf            ← instant
+  ✅ Using cached upload: mm_2024.pdf (41h remaining) ← instant
+
+After 48h:
+  🔄 Cache expired for mm_2024.pdf, re-uploading...  ← automatic re-upload
 ```
 
-After 48 hours the cache expires and the file is re-uploaded automatically.
+`.upload_cache.json` is listed in `.gitignore` and stays local to your machine.
 
 ## Using with Gemini CLI (natural language)
 
@@ -205,18 +201,6 @@ python converter.py lost_mine.pdf --monsters mm_2024.pdf --level 4 --players 3
 The **SRD 5.2 is free** and covers most use cases — it's a great starting point.
 
 ---
-
-## PDF Caching
-
-Rulebook and monster manual PDFs are processed by Docling once and cached as `.md` files next to the originals:
-
-```
-dmg_2024.pdf     →  dmg_2024.md      ← generated once, reused forever
-mm_2024.pdf      →  mm_2024.md       ← generated once, reused forever
-my_adventure.pdf →  my_adventure.md  ← cached per adventure
-```
-
-On subsequent runs, the cached `.md` is loaded instantly. To force a re-process, delete the `.md` file.
 
 ---
 
