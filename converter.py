@@ -22,11 +22,13 @@ from pathlib import Path
 load_dotenv()
 
 # ── Configuration ──────────────────────────────────────────────────────────────
-# Set GEMINI_API_KEY in a .env file (copy .env.example to .env to get started)
+# Set GEMINI_API_KEY and optionally GEMINI_MODEL in a .env file
 API_KEY = os.getenv("GEMINI_API_KEY")
 if not API_KEY:
     print("❌ GEMINI_API_KEY not set. Copy .env.example to .env and add your key.")
     sys.exit(1)
+
+MODEL = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 
 # Safe character limit for the full prompt (Gemini Flash supports ~1M tokens).
 # The adventure text is always kept intact; reference context is trimmed if needed.
@@ -34,7 +36,7 @@ MAX_CHARS = 700_000
 # ───────────────────────────────────────────────────────────────────────────────
 
 genai.configure(api_key=API_KEY)
-model = genai.GenerativeModel("gemini-2.0-flash")
+model = genai.GenerativeModel(MODEL)
 
 
 def pdf_to_markdown(pdf_path: str) -> str:
@@ -81,7 +83,7 @@ def convert_adventure(
     level: int,
     players: int,
 ) -> None:
-    print(f"\n🎲 dnd-converter — Level {level}, {players} players")
+    print(f"\n🎲 dnd-converter — Level {level}, {players} players | model: {MODEL}")
     print("=" * 50)
 
     reference_context = ""
