@@ -19,6 +19,9 @@ from pathlib import Path
 
 import google.generativeai as genai
 from docling.document_converter import DocumentConverter
+from docling.datamodel.base_models import InputFormat
+from docling.datamodel.pipeline_options import PdfPipelineOptions
+from docling.document_converter import PdfFormatOption
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -43,7 +46,11 @@ def pdf_to_markdown(pdf_path: str) -> str:
         return markdown
 
     print(f"  🤖 Processing with Docling: {Path(pdf_path).name}  (first time — may take a few minutes)")
-    converter = DocumentConverter()
+    pipeline_options = PdfPipelineOptions()
+    pipeline_options.do_ocr = False  # PDFs are text-based, no OCR needed
+    converter = DocumentConverter(
+        format_options={InputFormat.PDF: PdfFormatOption(pipeline_options=pipeline_options)}
+    )
     markdown = converter.convert(pdf_path).document.export_to_markdown()
     md_path.write_text(markdown, encoding="utf-8")
     print(f"  💾 Cached at: {md_path.name} ({len(markdown):,} characters)")
