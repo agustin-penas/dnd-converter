@@ -140,6 +140,36 @@ Open it in **VS Code** (`Ctrl+Shift+V` / `Cmd+Shift+V`) to preview the formatted
 
 ---
 
+---
+
+## Handling large Monster Manual PDFs
+
+The Monster Manual is a large file. Instead of sending it whole to the model on every run, the recommended workflow is:
+
+### 1. Parse the Monster Manual once
+
+```bash
+python parse_mm.py mm_2024.pdf
+```
+
+This creates a `monsters/` folder with one `.md` file per monster entry. It takes ~30 minutes on first run but only needs to be done once — Docling caches the result.
+
+### 2. Filter to only the monsters your adventure needs
+
+```bash
+python filter_monsters.py my_adventure.pdf
+```
+
+This reads your adventure, asks Gemini which monsters appear in it, and produces a small `my_adventure_monsters.md` with only those stat blocks.
+
+### 3. Use the filtered file in the converter
+
+```bash
+python converter.py my_adventure.pdf --monsters my_adventure_monsters.md --level 5 --players 4
+```
+
+This keeps the prompt lean and fast regardless of how large the full Monster Manual is.
+
 ## Using with Gemini CLI (natural language)
 
 Instead of remembering the command arguments, you can use the **[Gemini CLI](https://github.com/google-gemini/gemini-cli)** to run conversions with plain English.
